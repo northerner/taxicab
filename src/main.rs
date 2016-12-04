@@ -42,10 +42,11 @@ fn get_distance(route: &str) -> i32 {
     let mut y_distance = 0;
     let mut facing = Direction::North;
     let mut instructions = route.split(", ");
+    let mut route_stops = vec![(0, 0)];
     loop {
         match instructions.next() {
-            Some(x) => {
-                let move_value = parse_move(&facing, x);
+            Some(move_string) => {
+                let move_value = parse_move(&facing, move_string);
                 facing = move_value.direction;
                 y_distance = match facing {
                     Direction::North => y_distance + move_value.distance,
@@ -57,13 +58,35 @@ fn get_distance(route: &str) -> i32 {
                     Direction::West => x_distance - move_value.distance,
                     _ => x_distance,
                 };
-                println!("x: {}", x_distance);
-                println!("y: {}", y_distance);
+                let &(last_x, last_y) = route_stops.last().unwrap();
+                if last_x != x_distance {
+                    let x_step_range = get_step_range(last_x, x_distance);
+                    for x in x_step_range {
+                        if route_stops.last().unwrap() != &(x, y_distance) {
+                            route_stops.push((x, y_distance));
+                        }
+                    }
+                } else {
+                    let y_step_range = get_step_range(last_y, y_distance);
+                    for y in y_step_range {
+                        if route_stops.last().unwrap() != &(x_distance, y) {
+                            route_stops.push((x_distance, y));
+                        }
+                    }
+                }
             },
             None => { break }
         }
     }
+    println!("{:?}", route_stops);
     x_distance.abs() + y_distance.abs()
+}
+
+fn get_step_range(last: i32, new: i32) -> Vec<i32> {
+    match new > last {
+        true => (last..new+1).collect(),
+        false => (new..last+1).rev().collect()
+    }
 }
 
 #[test]
