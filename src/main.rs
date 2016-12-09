@@ -43,7 +43,7 @@ fn get_distance(route: &str) -> i32 {
     let mut facing = Direction::North;
     let mut instructions = route.split(", ");
     let mut route_stops = vec![(0, 0)];
-    loop {
+    'outer: loop {
         match instructions.next() {
             Some(move_string) => {
                 let move_value = parse_move(&facing, move_string);
@@ -78,8 +78,22 @@ fn get_distance(route: &str) -> i32 {
             None => { break }
         }
     }
-    println!("{:?}", route_stops);
-    x_distance.abs() + y_distance.abs()
+    let mut step_by_step = vec![];
+    let mut crossed = (0, 0);
+    for point in route_stops {
+        if step_by_step.contains(&point) {
+            crossed = point.clone();
+            break;
+        } else {
+            step_by_step.push(point);
+        }
+    }
+    get_abs_distance(crossed)
+
+}
+
+fn get_abs_distance((x, y): (i32, i32)) -> i32 {
+    x.abs() + y.abs()
 }
 
 fn get_step_range(last: i32, new: i32) -> Vec<i32> {
