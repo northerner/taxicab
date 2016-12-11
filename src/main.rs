@@ -1,121 +1,59 @@
 use std::env;
 
 fn main() {
-    let distance = get_distance(&env::args().nth(1).unwrap());
-    println!("{}", distance);
+    let result = follow_path_to_button(5, &env::args().nth(1).unwrap());
+    println!("{}", result);
 }
 
-#[derive(PartialEq)]
-#[derive(Debug)]
-struct Move {
-    direction: Direction,
-    distance: i32
-}
-
-#[derive(PartialEq)]
-#[derive(Debug)]
-enum Direction {
-    North,
-    East,
-    South,
-    West
-}
-
-fn parse_move(facing: &Direction, movement: &str) -> Move {
-    let (direction, distance) = movement.split_at(1);
-    let new_direction = match (facing, direction) {
-        (&Direction::North, "L") => Direction::West,
-        (&Direction::North, "R") => Direction::East,
-        (&Direction::East, "L") => Direction::North,
-        (&Direction::East, "R") => Direction::South,
-        (&Direction::South, "L") => Direction::East,
-        (&Direction::South, "R") => Direction::West,
-        (&Direction::West, "L") => Direction::South,
-        (&Direction::West, "R") => Direction::North,
-        (_, _) => Direction::North,
-    };
-    Move{direction: new_direction, distance: distance.parse::<i32>().unwrap()}
-}
-
-fn get_distance(route: &str) -> i32 {
-    let mut x_distance = 0;
-    let mut y_distance = 0;
-    let mut facing = Direction::North;
-    let mut instructions = route.split(", ");
-    let mut route_stops = vec![(0, 0)];
-    'outer: loop {
-        match instructions.next() {
-            Some(move_string) => {
-                let move_value = parse_move(&facing, move_string);
-                facing = move_value.direction;
-                y_distance = match facing {
-                    Direction::North => y_distance + move_value.distance,
-                    Direction::South => y_distance - move_value.distance,
-                    _ => y_distance,
-                };
-                x_distance = match facing {
-                    Direction::East => x_distance + move_value.distance,
-                    Direction::West => x_distance - move_value.distance,
-                    _ => x_distance,
-                };
-                let &(last_x, last_y) = route_stops.last().unwrap();
-                if last_x != x_distance {
-                    let x_step_range = get_step_range(last_x, x_distance);
-                    for x in x_step_range {
-                        if route_stops.last().unwrap() != &(x, y_distance) {
-                            route_stops.push((x, y_distance));
-                        }
-                    }
-                } else {
-                    let y_step_range = get_step_range(last_y, y_distance);
-                    for y in y_step_range {
-                        if route_stops.last().unwrap() != &(x_distance, y) {
-                            route_stops.push((x_distance, y));
-                        }
-                    }
-                }
-            },
-            None => { break }
-        }
+fn get_button(start: i32, direction: &str) -> i32 {
+    let keypad = vec![[1, 2, 3],
+                      [4, 5, 6],
+                      [7, 8, 9]];
+    
+    let (index_y, index_x) = get_button_position(start);
+    match direction {
+        "U" => if (index_y == 0) { start } else { keypad[index_y-1][index_x] },
+        "R" => if (index_x == 2) { start } else { keypad[index_y][index_x+1] },
+        "D" => if (index_y == 2) { start } else { keypad[index_y+1][index_x] },
+        "L" => if (index_x == 0) { start } else { keypad[index_y][index_x-1] },
+        _ => 0
     }
-    let mut step_by_step = vec![];
-    let mut crossed = (0, 0);
-    for point in route_stops {
-        if step_by_step.contains(&point) {
-            crossed = point.clone();
-            break;
-        } else {
-            step_by_step.push(point);
-        }
-    }
-    get_abs_distance(crossed)
-
 }
 
-fn get_abs_distance((x, y): (i32, i32)) -> i32 {
-    x.abs() + y.abs()
+fn get_button_position(button: i32) -> (usize, usize) {
+    let keypad = vec![[1, 2, 3],
+                      [4, 5, 6],
+                      [7, 8, 9]];
+    let y = &keypad.iter().position(|&x| x.contains(&button)).unwrap();
+    let x = keypad[y.clone()].iter().position(|&x| x == button).unwrap();
+    (y.clone(), x.clone())
 }
 
-fn get_step_range(last: i32, new: i32) -> Vec<i32> {
-    match new > last {
-        true => (last..new+1).collect(),
-        false => (new..last+1).rev().collect()
+fn follow_path_to_button(start: i32, instructions: &str) -> i32 {
+    let mut current_location = start;
+    for instruction in instructions.chars() {
+        current_location = get_button(current_location, &instruction.to_string());
     }
+    current_location
 }
 
 #[test]
-fn returns_a_parsed_move() {
-    assert_eq!(Move{direction: Direction::East, distance: 3},
-               parse_move(&Direction::North, "R3"));
-    assert_eq!(Move{direction: Direction::West, distance: 8},
-               parse_move(&Direction::North, "L8"));
-    assert_eq!(Move{direction: Direction::South, distance: 6},
-               parse_move(&Direction::West, "L6"));
+fn returns_the_button_to_press() {
+    assert_eq!(2, get_button(5, "U"));
+    assert_eq!(6, get_button(5, "R"));
+    assert_eq!(9, get_button(6, "D"));
+    assert_eq!(9, get_button(9, "D"));
 }
 
 #[test]
-fn returns_a_total_distance() {
-    assert_eq!(5, get_distance("L3, R2"));
-    assert_eq!(12, get_distance("L7, R2, L3"));
-    assert_eq!(2, get_distance("L3, R2, R3"));
+fn returns_position_of_button_in_vector() {
+    assert_eq!((2, 2), get_button_position(9));
+    assert_eq!((1, 0), get_button_position(4));
+}
+
+#[test]
+fn returns_button_after_several_instructions() {
+    assert_eq!(9, follow_path_to_button(5, "RD"));
+    assert_eq!(8, follow_path_to_button(5, "RDL"));
+    assert_eq!(7, follow_path_to_button(5, "RDLLL"));
 }
