@@ -1,72 +1,42 @@
-use std::env;
+use std::str::FromStr;
+use std::io::prelude::*;
+use std::fs::File;
 
 fn main() {
-    let result = follow_path_to_button("5", &env::args().nth(1).unwrap());
+    let mut file = File::open("triangle").unwrap();
+    let mut buffer = String::new();
+    file.read_to_string(&mut buffer);
+    let result = count_triangles(&buffer);
     println!("{}", result);
 }
 
-fn get_button(start: &str, direction: &str) -> String {
-    let keypad = vec![["X", "X", "X", "X", "X", "X", "X"],
-                      ["X", "X", "X", "1", "X", "X", "X"],
-                      ["X", "X", "2", "3", "4", "X", "X"],
-                      ["X", "5", "6", "7", "8", "9", "X"],
-                      ["X", "X", "A", "B", "C", "X", "X"],
-                      ["X", "X", "X", "D", "X", "X", "X"],
-                      ["X", "X", "X", "X", "X", "X", "X"]];
-    let (index_y, index_x) = get_button_position(start);
-    let mut button = "X";
-    match direction {
-        "U" => button = keypad[index_y-1][index_x],
-        "R" => button = keypad[index_y][index_x+1],
-        "D" => button = keypad[index_y+1][index_x],
-        "L" => button = keypad[index_y][index_x-1],
-        _ => button = "0"
-    }
-    if button == "X" {
-        start.to_string()
-    } else {
-        button.to_string()
-    }
+fn is_triangle(edges_input: Vec<i32>) -> bool {
+    let mut edges = edges_input.clone();
+    edges.sort();
+    (edges[0] + edges[1]) > edges[2]
 }
 
-fn get_button_position(button: &str) -> (usize, usize) {
-    let keypad = vec![["X", "X", "X", "X", "X", "X", "X"],
-                      ["X", "X", "X", "1", "X", "X", "X"],
-                      ["X", "X", "2", "3", "4", "X", "X"],
-                      ["X", "5", "6", "7", "8", "9", "X"],
-                      ["X", "X", "A", "B", "C", "X", "X"],
-                      ["X", "X", "X", "D", "X", "X", "X"],
-                      ["X", "X", "X", "X", "X", "X", "X"]];
-    let y = &keypad.iter().position(|&x| x.contains(&button)).unwrap();
-    let x = keypad[y.clone()].iter().position(|&x| x == button).unwrap();
-    (y.clone(), x.clone())
-}
-
-fn follow_path_to_button(start: &str, instructions: &str) -> String {
-    let mut current_location = start.to_string();
-    for instruction in instructions.chars() {
-        current_location = get_button(&current_location, &instruction.to_string());
+fn count_triangles(triangle_list: &str) -> i32 {
+    let mut count = 0;
+    for line in triangle_list.lines() {
+        let triangle: Vec<i32> = line
+            .split_whitespace()
+            .map(|x| i32::from_str(x).unwrap())
+            .collect();
+        if is_triangle(triangle) {
+            count = count + 1;
+        }
     }
-    current_location
+    count
 }
 
 #[test]
-fn returns_the_button_to_press() {
-    assert_eq!("5", get_button("5", "U"));
-    assert_eq!("6", get_button("5", "R"));
-    assert_eq!("A", get_button("A", "D"));
-    assert_eq!("9", get_button("9", "D"));
+fn returns_true_if_valid_triangle() {
+    assert_eq!(true, is_triangle(vec![5, 5, 5]));
+    assert_eq!(false, is_triangle(vec![5, 5, 20]));
 }
 
 #[test]
-fn returns_position_of_button_in_vector() {
-    assert_eq!((2, 5), get_button_position("9"));
-    assert_eq!((1, 4), get_button_position("4"));
-}
-
-#[test]
-fn returns_button_after_several_instructions() {
-    assert_eq!("A", follow_path_to_button("5", "RD"));
-    assert_eq!("A", follow_path_to_button("5", "RDL"));
-    assert_eq!("C", follow_path_to_button("5", "RDRRR"));
+fn returns_count_of_valid_triangles() {
+    assert_eq!(2, count_triangles("5 5 5\n5 5 20\n5 5 5"));
 }
